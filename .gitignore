@@ -1,3 +1,5 @@
 /.idea
 /_pycache_
 /venv
+mainguiv*
+!mainguiv8.py
