@@ -1,5 +1,6 @@
 /.idea
 /_pycache_
 /venv
-mainguiv*
+maingui*
 !mainguiv8.py
+ClickableLineEdit.py
