@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
-from ClickableLineEditv2 import ClickableLineEdit, AnimState
-from CustomMenuBar import CustomMenuBar
-from customMainWindow import customMainWindow
+from lib.ClickableLineEditv2 import ClickableLineEdit, AnimState
+from lib.CustomMenuBar import CustomMenuBar
+from lib.customMainWindow import customMainWindow
 from bisect import bisect_right
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFontMetrics, QColor
