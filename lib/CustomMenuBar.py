@@ -7,6 +7,7 @@ import re
 
 class CustomMenuBar(QWidget):
     newwindowrequest = pyqtSignal()
+    closewindowrequest = pyqtSignal()
     def __init__(self, parent=None):
         super().__init__(parent)
         self.mainwindow=parent
@@ -82,9 +83,13 @@ class CustomMenuBar(QWidget):
         self.updateMicroFocus()
         self.show()
         self.mainwindow.show()
+
+
     def close(self):
         #print('closed')
+        self.closewindowrequest.emit()
         self.mainwindow.close()
+
     def mousePressEvent(self,event):
         #print(event.pos())
         if event.button() == Qt.LeftButton:

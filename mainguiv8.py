@@ -107,7 +107,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         # load session
-        # self.loadSession()
+        self.loadSession()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -131,6 +131,8 @@ class Ui_MainWindow(object):
                 settings.setValue(str(i) + "/referenced", self.layoutchildren[i].referenced)
                 settings.setValue(str(i) + "/referring", self.layoutchildren[i].referring)
                 settings.setValue(str(i) + "/readonly", self.layoutchildren[i].isReadOnly())
+                settings.setValue(str(i) + "/highlights", [hilite.toprimitive() for hilite in self.layoutchildren[i].highlights])
+                settings.setValue(str(i) + "/numresults", self.layoutchildren[i].numresults)
 
             settings.endGroup()
 
@@ -160,9 +162,12 @@ class Ui_MainWindow(object):
                 val = str(settings.value(str(i), ""))
                 lineEdit = ClickableLineEdit(self.centralwidget)
                 lineEdit.setText(val)
-                lineEdit.refgroups = settings.value(str(i) + "/refgroup", [])
+                lineEdit.refgroups = settings.value(str(i) + "/refgroup", [])#TODO type error?
                 lineEdit.referenced = [int(j) for j in settings.value(str(i) + "/referenced", [])]
                 lineEdit.referring = [int(j) for j in settings.value(str(i) + "/referring", [])]
+                lineEdit.focused = False
+                lineEdit.numresults = settings.value(str(i) + "/numresults",0)
+                lineEdit.highlights = [AnimState.fromprimitive(hilite,lineEdit.focused) for hilite in settings.value(str(i) + "/highlights", [])]
                 lineEdit.setObjectName("lineEdit_" + str(i))
                 self.layoutchildren.append(lineEdit)
                 self.verticalLayout_2.insertWidget(i, lineEdit, QtCore.Qt.AlignTop)
@@ -171,7 +176,7 @@ class Ui_MainWindow(object):
                 if read:
                     lineEdit.setReadOnly(True)
 
-        pos = self.getNearestNotReadOnly(len(self.layoutchildren) - 1, -1)
+        pos = self.getNearestNotReadOnly(len(self.layoutchildren), -1)
         self.layoutchildren[settings.value("activeid",
                                            pos)].setFocus()
         self.activeCell(settings.value("activeid", pos))
@@ -373,7 +378,7 @@ class Ui_MainWindow(object):
                     color = linecommands.colors[command]
                 else:
                     color = Qt.darkRed
-                self.layoutchildren[tocheck].addHighlight(AnimState("m1", 0, self.active.fontMetrics().width(command + "::"), color, 0, 1, color))
+                self.layoutchildren[tocheck].addHighlight(AnimState("m1", 0, self.active.fontMetrics().width(command + "::"), color, 0, 1, color,self.layoutchildren[tocheck].active))
         elif self.validIndex(tocheck + 1) and self.layoutchildren[tocheck + 1].isReadOnly():
             i = self.getNearestNotReadOnly(tocheck, 1) - 1
             amt = i - tocheck

@@ -47,10 +47,10 @@ class ClickableLineEdit(QLineEdit):
     identify = pyqtSignal(object)
 
     def mousePressEvent(self, event):
-        super(ClickableLineEdit, self).mousePressEvent(event)
         if QApplication.keyboardModifiers() == Qt.ShiftModifier and not self.active:
             self.identify.emit(self)
         else:
+            super(ClickableLineEdit, self).mousePressEvent(event)
             self.clicked.emit(self)
         # QLineEdit.mousePressEvent(self, event)
 
@@ -170,7 +170,7 @@ class ClickableLineEdit(QLineEdit):
             if type is not None and highlight.type != type:
                 continue
             if initialstart is not None and abs(highlight.initialstate["start"] - initialstart) > 1:
-                print("initialstart",highlight.initialstate["start"],initialstart)
+                print("initialstart", highlight.initialstate["start"], initialstart)
                 continue
             if initialwidth is not None and abs(highlight.initialstate["width"] - initialwidth) > 1:
                 print("initialwidth", highlight.initialstate["width"], initialwidth)
@@ -234,14 +234,15 @@ class QLineAnimation(QVariantAnimation):
 
 
 class AnimState(QObject):
-    def __init__(self, type, initialstart, initialwidth, initialcolor, finalstart=None, finalwidth=None, finalcolor=None):
+    def __init__(self, type, initialstart, initialwidth, initialcolor, finalstart=None, finalwidth=None, finalcolor=None, currentinitial=True):
         super().__init__()
         self.type = type
         finalstart = initialstart if finalstart is None else finalstart
         finalwidth = initialwidth if finalwidth is None else finalwidth
         finalcolor = initialcolor if finalcolor is None else finalcolor
         self.initialstate = {"start": initialstart, "width": initialwidth, "color": QColor(initialcolor)}
-        self.currentstate = {"start": initialstart, "width": initialwidth, "color": QColor(initialcolor)}
+        self.currentstate = {"start": initialstart, "width": initialwidth, "color": QColor(initialcolor)} \
+            if currentinitial else {"start": finalstart, "width": finalwidth, "color": QColor(finalcolor)}
         self.finalstate = {"start": finalstart, "width": finalwidth, "color": QColor(finalcolor)}
         self.anim = QLineAnimation(self)
         self.anim.valueChanged.connect(self.updateSelf)
@@ -295,3 +296,10 @@ class AnimState(QObject):
         finalcolor = self.finalstate["color"] if finalcolor is None else finalcolor
 
         return AnimState(type, initialstart, initialwidth, initialcolor, finalstart, finalwidth, finalcolor)
+
+    def toprimitive(self):
+        return [self.type, self.initialstate, self.finalstate]
+
+    @staticmethod
+    def fromprimitive(primitive,currentinitial):
+        return AnimState(primitive[0], primitive[1]["start"], primitive[1]["width"], primitive[1]["color"], primitive[2]["start"], primitive[2]["width"], primitive[2]["color"],currentinitial)
