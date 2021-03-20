@@ -4,3 +4,4 @@
 maingui*
 !mainguiv8.py
 ClickableLineEdit.py
+/dist/
