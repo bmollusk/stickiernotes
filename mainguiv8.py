@@ -99,6 +99,7 @@ class Ui_MainWindow(object):
         self.activeid = 0
         self.active.active = True
         self.active.focused = True
+        self.active.refmode = True
         self.layoutchildren.insert(0, lineEdit)
         self.initialize(0)
 
@@ -107,7 +108,7 @@ class Ui_MainWindow(object):
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
 
         # load session
-        self.loadSession()
+        # self.loadSession()
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -191,6 +192,7 @@ class Ui_MainWindow(object):
             return
         self.active.active = False
         self.active.focusToggle()
+        self.active.refmode = False
         if isinstance(line, int):
             self.active = self.layoutchildren[line]
             self.activeid = line
@@ -199,11 +201,13 @@ class Ui_MainWindow(object):
             self.activeid = self.layoutchildren.index(self.active)
         self.active.active = True
         self.active.focusToggle()
+        self.active.refmode = True
         self.active.setFocus()
 
     def splitText(self, firstindex, secondindex, cursorposition):  # splits the text of the first index into that line and another line
         temptext = self.layoutchildren[firstindex].refDisplayText()
         self.layoutchildren[firstindex].setText(temptext[0:cursorposition])
+        self.layoutchildren[firstindex].refmode = True
         self.layoutchildren[secondindex].setText(temptext[cursorposition:])
 
         self.layoutchildren[secondindex].setCursorPosition(0)
@@ -212,6 +216,7 @@ class Ui_MainWindow(object):
 
         self.textCheck(firstindex)  # TODO also reset highlights
         self.layoutchildren[firstindex].setText(self.layoutchildren[firstindex].refToReal())
+        self.layoutchildren[firstindex].refmode = False
         self.layoutchildren[firstindex].animToggle(True)
 
         newnumresults = self.layoutchildren[firstindex].numresults
@@ -241,7 +246,7 @@ class Ui_MainWindow(object):
         self.layoutchildren[firstindex].setText(previoustextemp + texttemp)
         self.layoutchildren[firstindex].setCursorPosition(len(previoustextemp))
 
-        self.M3Match(firstindex)
+        self.textCheck(firstindex)
 
     def validIndex(self, index):  # checks if an index is valid
         return 0 <= index < len(self.layoutchildren)
@@ -258,22 +263,26 @@ class Ui_MainWindow(object):
                                            line.refgroups[ref][3])  # TODO might not be accounting for the fact that a change in digit numbers will cause an offset, ie 1 to 2 digit
                     line.referring[ref] = refnum + offset  # TODO refgroups and referring have uncomfortably close roles
                     self.layoutchildren[li + refnum + offset].remRef(li + offset)
-                    self.layoutchildren[li + refnum + offset].addRef(li)
+                    if refnum<-1:
+                        self.layoutchildren[li + refnum + offset].addRef(li)
                 else:
                     self.layoutchildren[li + refnum].remRef(li + offset)
-                    self.layoutchildren[li + refnum].addRef(li)
+                    if refnum<-1:
+                        self.layoutchildren[li + refnum].addRef(li)
 
     def removeRefgroup(self, index, currindex):  # TODO combine with prior function using a lambda function for the check and the sets
         line = self.layoutchildren[index]
         for ref in range(len(line.refgroups)):
             refnum = int(line.refgroups[ref][0][1:len(line.refgroups[ref][0]) - 1])
-            if index + refnum == currindex:
+            if index + refnum == currindex:#TODO figure out whether the stuff should be one before the end or the beginning
                 line.refgroups[ref] = ("<-" + str(0) + ">", line.refgroups[ref][1], line.refgroups[ref][2],
                                        line.refgroups[ref][3])  # TODO might not be accounting for the fact that a change in digit numbers will cause an offset, ie 1 to 2 digit
                 line.referring[ref] = -0
                 string = line.displayText()
-                highlight = line.findHighlight(finalstart=line.fontMetrics().width(string[:line.refgroups[ref][3][0]]), finalwidth=line.fontMetrics().width(line.refgroups[ref][1]))
+                #highlight = line.findHighlight(finalstart=line.fontMetrics().width(string[:line.refgroups[ref][3][0]]), finalwidth=line.fontMetrics().width(line.refgroups[ref][1]))
+                highlight = line.highlights[ref]
                 highlight.initialstate["color"] = QColor('#ba8a8a')
+
 
     def newCell(self, index=None, command=False, num=1):  # creates *num* amount of new cells, specify whether new cells are output cells for a command or not
         if index is None:
@@ -493,12 +502,20 @@ class Ui_MainWindow(object):
             for i in range(tocheck, endtocheck):
                 self.refRecurse(i)
 
+        # self.mainwindow.queuedkeys -= 1
+        # print(self.mainwindow.queuedkeys)
+        # print(self.layoutchildren[tocheck].displayText())
+        # print("second")
+
         self.saveSession()
 
     def updateRefgroup(self, r, index):
         offset = 0
         for s in range(len(r.refgroups)):
-            output = self.layoutchildren[index + int(r.refgroups[s][0][1:len(r.refgroups[s][0]) - 1])].realDisplayText()
+            if int(r.refgroups[s][0][1:len(r.refgroups[s][0]) - 1]) < 0:
+                output = self.layoutchildren[index + int(r.refgroups[s][0][1:len(r.refgroups[s][0]) - 1])].realDisplayText()
+            else:
+                output = r.refgroups[s][1]
             r.refgroups[s] = (r.refgroups[s][0], output, r.refgroups[s][2], (r.refgroups[s][2][0] + offset, r.refgroups[s][2][0] + len(output) + offset))
             offset += len(output) - (r.refgroups[s][2][1] - r.refgroups[s][2][0])
 
@@ -534,8 +551,11 @@ class Ui_MainWindow(object):
 
     def insertReference(self, referral):
         ind = self.layoutchildren.index(referral) - self.activeid
-        string = self.strRep(self.active.displayText(), self.active.cursorPosition(), self.active.cursorPosition(), "<" + str(ind))
-        self.layoutchildren[self.activeid].setText(string)
+        cursorpos = self.active.cursorPosition()
+        string = self.strRep(self.active.displayText(), self.active.cursorPosition(), self.active.cursorPosition(), "<" + str(ind) +">")
+        self.active.setText(string)
+        self.active.setCursorPosition(cursorpos+len("<" + str(ind) +">"))
+        self.textCheck()
 
     def initialize(self, index):
         self.layoutchildren[index].returnPressed.connect(lambda: self.newCell(command=False))
@@ -560,6 +580,7 @@ class Ui_MainWindow(object):
         newMainWindow.move(self.mainwindow.x() + 10, self.mainwindow.y() + 10)
 
 
+
 if __name__ == "__main__":
     import sys
 
@@ -582,3 +603,5 @@ if __name__ == "__main__":
     ui.setupUi(MainWindow, 0, MainWindow.x(), MainWindow.y())
     MainWindow.show()
     sys.exit(app.exec_())
+
+

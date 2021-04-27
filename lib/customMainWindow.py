@@ -1,7 +1,7 @@
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtWidgets import QMainWindow
 from PyQt5.QtCore import Qt, QVariantAnimation, QEasingCurve
-from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFontMetrics
+from PyQt5.QtGui import QPainter, QBrush, QPen, QColor, QFontMetrics, QKeyEvent
 
 
 class customMainWindow(QMainWindow):
@@ -11,7 +11,8 @@ class customMainWindow(QMainWindow):
         self.bottomoffset = 20  # TODO fix to make less dumb
         self.resizing = False
         self.setMouseTracking(True)
-
+        self.installEventFilter(self)
+        self.queuedkeys = 0
     def mouseReleaseEvent(self, event):
         super(customMainWindow,self).mouseReleaseEvent(event)
         self.resizing = False
@@ -67,3 +68,10 @@ class customMainWindow(QMainWindow):
                 #print(event.globalPos().x(), self.tempx)
                 self.move(event.globalPos().x(), self.y())
                 self.resize(self.tempx - event.globalPos().x(), self.height())
+
+    # def eventFilter(self, object, event):
+    #     if isinstance(event, QKeyEvent) and event.type() == 7:
+    #         print("first")
+    #         self.queuedkeys += 1
+    #         print(self.queuedkeys)
+    #     return False

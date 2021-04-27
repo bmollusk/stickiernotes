@@ -35,6 +35,7 @@ class ClickableLineEdit(QLineEdit):
 
         self.active = False
         self.focused = False
+        self.refmode = False
 
         self.realDisplayTextCache = None
         self.refDisplayTextCache = None
@@ -78,7 +79,7 @@ class ClickableLineEdit(QLineEdit):
         return
 
     def realDisplayText(self):
-        if self.active:
+        if self.refmode:
             return self.refToReal()
         else:
             return self.displayText()
@@ -97,7 +98,7 @@ class ClickableLineEdit(QLineEdit):
             return text
 
     def refDisplayText(self):
-        if self.active:
+        if self.refmode:
             return self.displayText()
         else:
             return self.realToRef()
@@ -131,24 +132,6 @@ class ClickableLineEdit(QLineEdit):
                 highlight.doAnim(100, focusout)
             elif highlight.type == "m3":
                 highlight.doAnim(300, focusout)
-
-    # def updateSelf(self, value):
-    #     charlength = self.fades[0][1]
-    #     if value == -1 * charlength:
-    #         self.fades[0][3] = 1  # TODO make this not hardcoded either
-    #     else:
-    #         self.fades[0][3] = value
-    #     self.update()
-    #     self.setTextMargins(value, 0, 0, 0)
-    #
-    # def updateSelf2(self, value):
-    #     self.fades[1][2].setAlpha(value)
-    #     self.fades[1][2].lighter()
-    #     self.update()
-    #
-    # def updateSelf3(self, value):
-    #     self.fade.setAlpha(value)
-    #     self.update()
 
     def addRef(self, reference):
         if reference not in self.referenced:
@@ -220,6 +203,7 @@ class ClickableLineEdit(QLineEdit):
                 painter.drawRect(highlight.currentstate["start"], -50, final + 4, 100)
 
         super(ClickableLineEdit, self).paintEvent(event)
+
 
 
 class QLineAnimation(QVariantAnimation):
