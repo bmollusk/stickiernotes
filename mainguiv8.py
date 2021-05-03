@@ -1,14 +1,17 @@
+import logging
+
 from PyQt5 import QtCore, QtGui, QtWidgets
 from lib.ClickableLineEditv2 import ClickableLineEdit, AnimState
 from lib.CustomMenuBar import CustomMenuBar
 from lib.customMainWindow import customMainWindow
 from bisect import bisect_right
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, pyqtSignal, QObject, QThread, QRunnable
 from PyQt5.QtGui import QFontMetrics, QColor
 from asteval import Interpreter
 import re
-import linecommands
+from linecommands import CommandHandler
 
+CommandHandler = CommandHandler()
 
 # aeval = Interpreter()
 
@@ -106,6 +109,8 @@ class Ui_MainWindow(object):
         # housekeeping
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+        self.threads = []
 
         # load session
         # self.loadSession()
@@ -358,36 +363,38 @@ class Ui_MainWindow(object):
 
         return
 
+
+    def makeoutput(self, tocheck, output):
+        if not isinstance(output, list):
+            output = [output]
+        readonlyendindex = self.getNearestNotReadOnly(tocheck, 1) - 1
+        readonlyamt = readonlyendindex - tocheck
+        if readonlyamt < len(output):
+            self.newCell(index=tocheck, command=True, num=len(output) - readonlyamt)
+        elif readonlyamt > len(output):
+            self.remCell(index=tocheck, command=True, num=readonlyamt - len(output))
+
+        self.layoutchildren[tocheck].numresults = len(output)
+
+        for i in range(len(output)):  # TODO get rid of residual info
+            self.layoutchildren[tocheck + i + 1].setText(str(output[i]))
+
+
     def M1Match(self, tocheck):  # Matching for line commands
         check = self.layoutchildren[tocheck].realDisplayText()
         m = re.match('([A-Z-a-z-0-9]+)::(.*)', check)
         if m:
             command = m.group(1)
             expression = check[len(command) + 2:]
-            if command in linecommands.commandslist:
-                func = linecommands.commandslist[command]
-                try:
-                    output = func(expression)
-                except:
-                    output = "INVALID INPUT"
-                if not isinstance(output, list):
-                    output = [output]
-                readonlyendindex = self.getNearestNotReadOnly(tocheck, 1) - 1
-                readonlyamt = readonlyendindex - tocheck
-                if readonlyamt < len(output):
-                    self.newCell(index=tocheck, command=True, num=len(output) - readonlyamt)
-                elif readonlyamt > len(output):
-                    self.remCell(index=tocheck, command=True, num=readonlyamt - len(output))
-
-                self.layoutchildren[tocheck].numresults = len(output)
-
-                for i in range(len(output)):  # TODO get rid of residual info
-                    self.layoutchildren[tocheck + i + 1].setText(str(output[i]))
-                if command in linecommands.colors:
-                    color = linecommands.colors[command]
+            if command in CommandHandler.commandslist:
+                func = CommandHandler.commandslist[command]
+                CommandHandler.commandfinished.connect(lambda output: self.makeoutput(tocheck, output))
+                func(expression, loading = tocheck == self.activeid)
+                if command in CommandHandler.colors:
+                    color = CommandHandler.colors[command]
                 else:
                     color = Qt.darkRed
-                self.layoutchildren[tocheck].addHighlight(AnimState("m1", 0, self.active.fontMetrics().width(command + "::"), color, 0, 1, color,self.layoutchildren[tocheck].active))
+                self.layoutchildren[tocheck].addHighlight(AnimState("m1", 0, self.active.fontMetrics().width(command + "::"), color, 0, 1, color, self.layoutchildren[tocheck].active))
         elif self.validIndex(tocheck + 1) and self.layoutchildren[tocheck + 1].isReadOnly():
             i = self.getNearestNotReadOnly(tocheck, 1) - 1
             amt = i - tocheck
@@ -402,8 +409,8 @@ class Ui_MainWindow(object):
             heading = m2_1.group(1)
             command = m2_1.group(2)
             expression = m2_1.group(3)
-            if command in linecommands.colors:
-                color = linecommands.colors[command]
+            if command in CommandHandler.colors:
+                color = CommandHandler.colors[command]
             else:
                 color = Qt.darkRed
             finalcolor = QColor(color)
@@ -415,16 +422,16 @@ class Ui_MainWindow(object):
             heading = m2.group(1)
             command = m2.group(2)
             expression = m2.group(3)
-            if command in linecommands.colors:
-                color = linecommands.colors[command]
+            if command in CommandHandler.colors:
+                color = CommandHandler.colors[command]
             else:
                 color = Qt.darkRed
             finalcolor = QColor(color)
             finalcolor.setAlpha(0)
-            if command in linecommands.commandslist:
-                func = linecommands.commandslist[command]
+            if command in CommandHandler.commandslist:
+                func = CommandHandler.commandslist[command]
                 try:
-                    output = func(expression)
+                    output = func(expression)#TODO make this updated with networkmanager system
                 except:
                     output = "INVALID INPUT"
                 self.layoutchildren[tocheck].addHighlight(

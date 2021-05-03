@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
-import requests
+from PyQt5.QtNetwork import QNetworkRequest
+from PyQt5.QtCore import QUrl
 import time
 
 #basically if a function can stay unreplaced for a while, it'll run
@@ -23,9 +24,15 @@ import time
 #NEED TO FIND A WAY TO SEE QUEUED UP signals literally it'd just be if queued up signals == 0  then run query
 
 
-def query(q):
+def query(self, q):
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36'}
-    resp = requests.get(f'https://www.google.com/search?q={q}', headers=headers)
-    soup = BeautifulSoup(resp.text, 'lxml')
-    result = soup.find('div', class_='Z0LcW')
-    return result.text
+    url = f'https://www.google.com/search?q={q}'
+    request = QNetworkRequest(QUrl(url))
+    request.setRawHeader(b'User-Agent', b'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36')
+    self.network.finished.connect(lambda reply: responsehandler(self,reply))
+    self.network.get(request)
+
+def responsehandler(self, resp):
+    soup = BeautifulSoup(str(resp.readAll(),'utf8'),'lxml')
+    result = soup.find('div', class_='dDoNo')
+    self.commandfinished.emit(result.text)
