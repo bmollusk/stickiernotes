@@ -49,7 +49,7 @@ class CommandHandler(QObject):
 
     @instant
     def splitup(self, expression):
-        return self, expression.split(" ")
+        return expression.split(" ")
 
     @onenter
     def instantanswer(self, expression):

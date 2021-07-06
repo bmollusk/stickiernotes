@@ -11,7 +11,7 @@ from asteval import Interpreter
 import re
 from linecommands import CommandHandler
 
-CommandHandler = CommandHandler()
+commandhandler = CommandHandler()
 
 # aeval = Interpreter()
 
@@ -312,7 +312,7 @@ class Ui_MainWindow(object):
                 self.activeCell(self.layoutchildren[latestindex])  # TODO put this above the other one perhaps
                 self.splitText(index, latestindex, cursorposition)
             else:
-                if latestindex < self.activeid:
+                if latestindex <= self.activeid:
                     self.activeid += 1
                 self.layoutchildren[latestindex].setReadOnly(True)
 
@@ -365,6 +365,7 @@ class Ui_MainWindow(object):
 
 
     def makeoutput(self, tocheck, output):
+
         if not isinstance(output, list):
             output = [output]
         readonlyendindex = self.getNearestNotReadOnly(tocheck, 1) - 1
@@ -378,7 +379,11 @@ class Ui_MainWindow(object):
 
         for i in range(len(output)):  # TODO get rid of residual info
             self.layoutchildren[tocheck + i + 1].setText(str(output[i]))
-
+        QObject.disconnect(self.layoutchildren[tocheck].connection)
+        self.layoutchildren[tocheck].connection = None
+        m1 = self.layoutchildren[tocheck].findHighlight(type="m1")
+        if m1:
+            m1.stoppulse()
 
     def M1Match(self, tocheck):  # Matching for line commands
         check = self.layoutchildren[tocheck].realDisplayText()
@@ -386,15 +391,17 @@ class Ui_MainWindow(object):
         if m:
             command = m.group(1)
             expression = check[len(command) + 2:]
-            if command in CommandHandler.commandslist:
-                func = CommandHandler.commandslist[command]
-                CommandHandler.commandfinished.connect(lambda output: self.makeoutput(tocheck, output))
+            if command in self.layoutchildren[tocheck].commandler.commandslist:
+                func = self.layoutchildren[tocheck].commandler.commandslist[command]
+                self.layoutchildren[tocheck].connection = self.layoutchildren[tocheck].commandler.commandfinished.connect(lambda output: self.makeoutput(tocheck, output)) #TODO find a better way to do this connection deleting shit
                 func(expression, loading = tocheck == self.activeid)
-                if command in CommandHandler.colors:
-                    color = CommandHandler.colors[command]
+                if command in self.layoutchildren[tocheck].commandler.colors:
+                    color = self.layoutchildren[tocheck].commandler.colors[command]
                 else:
                     color = Qt.darkRed
                 self.layoutchildren[tocheck].addHighlight(AnimState("m1", 0, self.active.fontMetrics().width(command + "::"), color, 0, 1, color, self.layoutchildren[tocheck].active))
+                if tocheck != self.activeid:
+                    self.layoutchildren[tocheck].findHighlight(type="m1").startpulse()
         elif self.validIndex(tocheck + 1) and self.layoutchildren[tocheck + 1].isReadOnly():
             i = self.getNearestNotReadOnly(tocheck, 1) - 1
             amt = i - tocheck
@@ -409,8 +416,8 @@ class Ui_MainWindow(object):
             heading = m2_1.group(1)
             command = m2_1.group(2)
             expression = m2_1.group(3)
-            if command in CommandHandler.colors:
-                color = CommandHandler.colors[command]
+            if command in commandhandler.colors:
+                color = commandhandler.colors[command]
             else:
                 color = Qt.darkRed
             finalcolor = QColor(color)
@@ -422,14 +429,14 @@ class Ui_MainWindow(object):
             heading = m2.group(1)
             command = m2.group(2)
             expression = m2.group(3)
-            if command in CommandHandler.colors:
-                color = CommandHandler.colors[command]
+            if command in commandhandler.colors:
+                color = commandhandler.colors[command]
             else:
                 color = Qt.darkRed
             finalcolor = QColor(color)
             finalcolor.setAlpha(0)
-            if command in CommandHandler.commandslist:
-                func = CommandHandler.commandslist[command]
+            if command in commandhandler.commandslist:
+                func = commandhandler.commandslist[command]
                 try:
                     output = func(expression)#TODO make this updated with networkmanager system
                 except:

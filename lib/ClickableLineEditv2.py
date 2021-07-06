@@ -7,6 +7,7 @@ import re
 from sortedcontainers import SortedDict
 
 import linecommands
+from linecommands import CommandHandler
 
 
 class ClickableLineEdit(QLineEdit):
@@ -43,6 +44,9 @@ class ClickableLineEdit(QLineEdit):
         self.setFocusPolicy(Qt.NoFocus)
 
         self.numresults = 0  # TODO use in most places where you use get nearest not read only, as this is way easier to store
+
+        self.connection = None
+        self.commandler = CommandHandler()
 
     clicked = pyqtSignal(object)
     identify = pyqtSignal(object)
@@ -125,11 +129,11 @@ class ClickableLineEdit(QLineEdit):
             if len(self.refgroups) > 0:
                 self.setText(self.realToRef())
         self.focused = not self.focused
-
     def animToggle(self, focusout):
         for highlight in self.highlights:
             if highlight.type == "m1":
                 highlight.doAnim(100, focusout)
+
             elif highlight.type == "m3":
                 highlight.doAnim(300, focusout)
 
@@ -233,6 +237,10 @@ class AnimState(QObject):
         self.finishedloops = 0
         self.anim.finished.connect(self.incLoop)
 
+        self.pulseanim = QLineAnimation(self)
+        self.pulseanim.setLoopCount(-1)
+        self.pulseanim.valueChanged.connect(self.pulseSelf)
+
     def doAnim(self, duration=100, forward=True):
         start = 0.0 if forward else 1.0
         end = 1.0 if forward else 0.0
@@ -256,6 +264,7 @@ class AnimState(QObject):
         self.currentstate["color"] = currentcolor
         self.updated.emit()  # why this cause m1 to no work but m2 to work
 
+
     def isAnimating(self):
         return self.anim.state() == 2
 
@@ -264,6 +273,34 @@ class AnimState(QObject):
 
     def finishedLoopCount(self):
         return self.finishedloops
+
+    def startpulse(self, duration=400):
+        print("pulsestarted!")
+        self.pulseanim.setStartValue(100)
+        self.pulseanim.setKeyValueAt(0.5,0)
+        self.pulseanim.setEndValue(100)
+        self.pulseanim.setDuration(duration)
+        self.pulseanim.setEasingCurve(QEasingCurve.InOutQuad)
+        self.pulseanim.start()
+
+    def stoppulse(self):
+        print("pulsestopped!")
+        self.pulseanim.stop()
+        red = self.currentstate["color"].red()
+        green = self.currentstate["color"].green()
+        blue = self.currentstate["color"].blue()
+        alpha = self.finalstate["color"].alpha()#TODO make this function more adaptive
+        currentcolor = QColor(red, green, blue, alpha)
+        self.currentstate["color"] = currentcolor
+
+
+    def pulseSelf(self, value):
+        red = self.currentstate["color"].red()
+        green = self.currentstate["color"].green()
+        blue = self.currentstate["color"].blue()
+        alpha = value
+        currentcolor = QColor(red, green, blue, alpha)
+        self.currentstate["color"] = currentcolor
 
     def copy(self, type=None, initialstart=None, initialwidth=None, initialcolor=None, finalstart=None, finalwidth=None, finalcolor=None):
         """
